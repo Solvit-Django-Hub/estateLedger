@@ -11,6 +11,11 @@ env/
 ENV/
 estate/
 
+# removing migrations files
+**/migrations/*.py
+**/migrations/*.pyc
+!**/migrations/__init__.py
+
 # Local environment/config files
 .env
 .env.*

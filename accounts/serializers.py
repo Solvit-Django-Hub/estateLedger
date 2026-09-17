@@ -11,14 +11,11 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "email",
-            "first_name",
-            "last_name",
             "phone_number",
             "role",
-            "date_joined",
             "last_login",
         )
-        read_only_fields = ("id", "date_joined", "last_login")
+        read_only_fields = ("id", "last_login")
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
@@ -30,8 +27,6 @@ class RegistrationSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "email",
-            "first_name",
-            "last_name",
             "phone_number",
             "role",
             "password",
