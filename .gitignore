@@ -1,7 +1,45 @@
-venv/
+# Python cache
 __pycache__/
-*.pyc
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+estate/
+
+# removing migrations files
+**/migrations/*.py
+**/migrations/*.pyc
+!**/migrations/__init__.py
+
+# Local environment/config files
+.env
+.env.*
+
+# Database files
+*.sqlite3
 db.sqlite3
+
+# Logs
 *.log
+
+# Media uploads
 media/
+
+# IDE/editor files
+.vscode/
+.idea/
 .DS_Store
+Thumbs.db
+
+# Django migrations are usually committed
+# Keep the existing migrations tracked.
+
+# Optional: uncomment if you do not want local test coverage artifacts
+# .coverage
+# htmlcov/
+# coverage.xml
