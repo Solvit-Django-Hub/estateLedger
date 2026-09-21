@@ -19,8 +19,14 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password])
-    password_confirmation = serializers.CharField(write_only=True)
+    password = serializers.CharField(
+        write_only=True,
+        validators=[validate_password]
+    )
+
+    password_confirmation = serializers.CharField(
+        write_only=True
+    )
 
     class Meta:
         model = User
@@ -32,19 +38,30 @@ class RegistrationSerializer(serializers.ModelSerializer):
             "password",
             "password_confirmation",
         )
+
         read_only_fields = ("id",)
 
     def validate(self, attrs):
         if attrs.get("password") != attrs.get("password_confirmation"):
-            raise serializers.ValidationError({"password_confirmation": "Passwords do not match."})
+            raise serializers.ValidationError(
+                {
+                    "password_confirmation":
+                    "Passwords do not match."
+                }
+            )
+
         attrs.pop("password_confirmation")
+
         return attrs
 
     def create(self, validated_data):
         password = validated_data.pop("password")
-        user = User.objects.create_user(**validated_data)
-        user.set_password(password)
-        user.save()
+
+        user = User.objects.create_user(
+            password=password,
+            **validated_data
+        )
+
         return user
 
 
@@ -88,4 +105,7 @@ class LoginSerializer(serializers.Serializer):
 
         attrs["user"] = user
         return attrs
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
 
