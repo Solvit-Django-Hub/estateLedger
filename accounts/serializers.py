@@ -59,6 +59,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
         user = User.objects.create_user(
             password=password,
+            is_active=False,
             **validated_data
         )
 
@@ -102,7 +103,10 @@ class LoginSerializer(serializers.Serializer):
         user = User.objects.filter(email__iexact=email).first()
         if user is None or not user.check_password(password):
             raise serializers.ValidationError("Invalid email or password.")
-
+        if not user.is_active:
+            raise serializers.ValidationError(
+                "Account is not activated. Please check your email."
+            )
         attrs["user"] = user
         return attrs
 
