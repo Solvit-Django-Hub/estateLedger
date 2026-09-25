@@ -31,7 +31,7 @@ class Unit(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.estate.name} - {self.unit_number}"
+        return f"{self.estate.name} - {self.unit_number} {self.unit_type}"
 
 
 class UnitClaim(models.Model):
@@ -66,7 +66,7 @@ class UnitClaim(models.Model):
     class Meta:
         constraints = [
             # Prevents the same person from double-claiming the same unit
-            # with a live (pending/confirmed) claim in the same role.
+            # with a live (pending/confirmed) claim in the same role
             models.UniqueConstraint(
                 fields=["user", "unit", "role_at_unit"],
                 condition=models.Q(status__in=["pending", "confirmed"]),
