@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.utils import timezone
 from .models import Estate, Unit, UnitClaim, EstateMembership
 
 class EstateSerializer(serializers.ModelSerializer):
@@ -113,6 +114,41 @@ class EstateMembershipSerializer(serializers.ModelSerializer):
             )
 
         return data
-        
 
+class UnitClaimApprovalSerializer(serializers.ModelSerializer):
 
+    class Meta:
+        model = UnitClaim
+        fields = [
+            "status",
+        ]
+
+    def validate_status(self, value):
+        allowed_statuses = [
+            UnitClaim.Status.CONFIRMED,
+            UnitClaim.Status.REJECTED,
+        ]
+
+        if value not in allowed_statuses:
+            raise serializers.ValidationError(
+                "Status must be either confirmed or rejected."
+            )
+
+        return value
+
+    def update(self, instance, validated_data):
+        status = validated_data.get("status")
+
+        instance.status = status
+
+        if status == UnitClaim.Status.CONFIRMED:
+            instance.confirmed_by = self.context["request"].user
+            instance.confirmed_at = timezone.now()
+
+        elif status == UnitClaim.Status.REJECTED:
+            instance.confirmed_by = self.context["request"].user
+            instance.confirmed_at = timezone.now()
+
+        instance.save()
+
+        return instance
