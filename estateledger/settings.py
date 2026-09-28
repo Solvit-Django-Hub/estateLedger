@@ -156,4 +156,32 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     # OTHER SETTINGS
+
+    "ENUM_NAME_OVERRIDES": {
+        "UserRoleEnum": [
+            ("admin", "Admin"),
+            ("manager", "Manager"),
+            ("owner", "Owner"),
+            ("tenant", "Tenant"),
+        ],
+
+        "StaffRoleEnum": [
+            ("admin", "Admin"),
+            ("manager", "Manager"),
+        ],
+
+        "OwnerTenantRoleEnum": [
+            ("owner", "Owner"),
+            ("tenant", "Tenant"),
+        ],
+
+        "EstateMembershipRoleEnum": [
+            ("manager", "Manager"),
+            ("admin", "Admin"),
+            ("board", "Board"),
+            ("accountant", "Accountant"),
+            ("auditor", "Auditor"),
+        ],
+    },
+
 }

@@ -6,6 +6,7 @@ from .views import (
     UnitDetailView,
     UnitClaimListCreateView,
     UnitClaimDetailView,
+    UnitClaimApprovalView,
     EstateMembershipListCreateView,
     EstateMembershipDetailView,
 )
@@ -19,7 +20,7 @@ urlpatterns = [
 
     path("claims/", UnitClaimListCreateView.as_view(), name="claim-list-create"),
     path("claims/<int:pk>/", UnitClaimDetailView.as_view(), name="claim-detail"),
-    path("claims/<int:pk>/approve/", UnitClaimDetailView.as_view(), name="claim-approval"),
+    path("claims/<int:pk>/approve/", UnitClaimApprovalView.as_view(), name="claim-approval"),
 
     path("memberships/", EstateMembershipListCreateView.as_view(), name="membership-list-create",),
     path("memberships/<int:pk>/",EstateMembershipDetailView.as_view(),name="membership-detail",)

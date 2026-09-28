@@ -60,9 +60,9 @@ class RegistrationSerializer(serializers.ModelSerializer):
                 "Phone number must contain exactly 10 digits."
             )
 
-        if not value.startswith("0"):
+        if not value.startswith("07"):
             raise serializers.ValidationError(
-                "Phone number must start with 0"
+                "Phone number must start with 07"
             )
 
         return value
@@ -101,7 +101,10 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
 
 class StaffCreateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, validators=[validate_password])
+    password = serializers.CharField(
+        write_only=True,
+        validators=[validate_password]
+    )
 
     role = serializers.ChoiceField(
         choices=[
@@ -112,16 +115,104 @@ class StaffCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email", "phone_number", "role", "password")
+        fields = ("id", "email","phone_number","role","password")
         read_only_fields = ("id",)
 
     def create(self, validated_data):
         password = validated_data.pop("password")
-        user = User.objects.create_user(**validated_data)
-        user.set_password(password)
-        user.save()
+
+        user = User.objects.create_user(
+            password=password,
+            is_staff=True,
+            is_active=False,
+            **validated_data
+        )
+
         return user
 
+class StaffStatusSerializer(serializers.Serializer):
+    action = serializers.ChoiceField(
+        choices=[
+            ("promote", "Promote"),
+            ("demote", "Demote"),
+        ]
+    )
+
+    role = serializers.ChoiceField(
+        choices=User.Role.choices
+    )
+
+    def validate(self, attrs):
+        action = attrs.get("action")
+        role = attrs.get("role")
+
+        if action == "promote":
+            if role not in [
+                User.Role.ADMIN,
+                User.Role.MANAGER,
+            ]:
+                raise serializers.ValidationError({
+                    "role":
+                    "A promoted staff user must be admin or manager."
+                })
+
+            if self.instance and not self.instance.is_active:
+                raise serializers.ValidationError({
+                    "user":
+                    "Only activated users can be promoted to staff."
+                })
+
+        if action == "demote":
+            if role not in [
+                User.Role.OWNER,
+                User.Role.TENANT,
+            ]:
+                raise serializers.ValidationError({
+                    "role":
+                    "A demoted staff user must become owner or tenant."
+                })
+
+            if self.instance and not self.instance.is_staff:
+                raise serializers.ValidationError({
+                    "user":
+                    "This user is not currently a staff member."
+                })
+
+        request = self.context.get("request")
+
+        if (
+            self.instance
+            and request
+            and self.instance == request.user
+            and action == "demote"
+        ):
+            raise serializers.ValidationError({
+                "user":
+                "You cannot demote your own staff account."
+            })
+
+        return attrs
+
+    def update(self, instance, validated_data):
+        action = validated_data["action"]
+        role = validated_data["role"]
+
+        if action == "promote":
+            instance.role = role
+            instance.is_staff = True
+
+        elif action == "demote":
+            instance.role = role
+            instance.is_staff = False
+
+        instance.save(
+            update_fields=[
+                "role",
+                "is_staff",
+            ]
+        )
+
+        return instance
 
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
