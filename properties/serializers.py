@@ -23,6 +23,15 @@ class EstateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Estate name must be at least 3 characters."
             )
+        queryset = Estate.objects.filter(name__iexact=value)
+
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+
+        if queryset.exists():
+            raise serializers.ValidationError(
+                "An estate with this name already exists."
+            )
         return value
 
 class UnitSerializer(serializers.ModelSerializer):
