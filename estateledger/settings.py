@@ -137,7 +137,7 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
-
+DEFAULT_FROM_EMAIL = "noreply@estateledger.com"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -151,8 +151,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Your Project API',
-    'DESCRIPTION': 'Your project description',
+    'TITLE': 'Estate Ledger',
+    'DESCRIPTION': 'EstateLedger is a Django REST Framework–based property management API designed to manage users, estates, units, unit claims, estate memberships, authentication, and related property operations. The system uses JWT authentication, role-based user access, validation, pagination, and Swagger/OpenAPI documentation, with support for secure account activation and other user-management features.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     # OTHER SETTINGS

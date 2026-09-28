@@ -27,6 +27,12 @@ class RegistrationSerializer(serializers.ModelSerializer):
     password_confirmation = serializers.CharField(
         write_only=True
     )
+    role = serializers.ChoiceField(
+        choices = [
+            (User.Role.OWNER, User.Role.OWNER.label),
+            (User.Role.TENANT, User.Role.TENANT.label),
+        ]
+    )
 
     class Meta:
         model = User
@@ -40,6 +46,34 @@ class RegistrationSerializer(serializers.ModelSerializer):
         )
 
         read_only_fields = ("id",)
+
+    def validate_phone_number(self, value):
+        value = value.strip()
+
+        if not value.isdigit():
+            raise serializers.ValidationError(
+                "Phone number must contain digits only."
+            )
+
+        if len(value) != 10:
+            raise serializers.ValidationError(
+                "Phone number must contain exactly 10 digits."
+            )
+
+        if not value.startswith("0"):
+            raise serializers.ValidationError(
+                "Phone number must start with 0"
+            )
+
+        return value
+
+    def to_internal_value(self, data):
+        data = data.copy()
+
+        if "role" in data and isinstance(data["role"], str):
+            data["role"] = data["role"].strip().lower()
+
+        return super().to_internal_value(data)
 
     def validate(self, attrs):
         if attrs.get("password") != attrs.get("password_confirmation"):
@@ -59,6 +93,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
         user = User.objects.create_user(
             password=password,
+            is_active=False,
             **validated_data
         )
 
@@ -102,7 +137,10 @@ class LoginSerializer(serializers.Serializer):
         user = User.objects.filter(email__iexact=email).first()
         if user is None or not user.check_password(password):
             raise serializers.ValidationError("Invalid email or password.")
-
+        if not user.is_active:
+            raise serializers.ValidationError(
+                "Account is not activated. Please check your email."
+            )
         attrs["user"] = user
         return attrs
 
