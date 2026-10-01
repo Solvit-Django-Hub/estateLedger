@@ -235,6 +235,95 @@ class LoginSerializer(serializers.Serializer):
         attrs["user"] = user
         return attrs
 
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            "id",
+            "email",
+            "phone_number",
+            "role",
+            "last_login",
+        )
+
+        read_only_fields = (
+            "id",
+            "role",
+            "last_login",
+        )
+
+    def validate_phone_number(self, value):
+        value = value.strip()
+
+        if not value.isdigit():
+            raise serializers.ValidationError(
+                "Phone number must contain digits only."
+            )
+
+        if len(value) != 10:
+            raise serializers.ValidationError(
+                "Phone number must contain exactly 10 digits."
+            )
+
+        if not value.startswith("07"):
+            raise serializers.ValidationError(
+                "Phone number must start with 07."
+            )
+
+        return value
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(
+        write_only=True
+    )
+
+    new_password = serializers.CharField(
+        write_only=True,
+        validators=[validate_password]
+    )
+
+    new_password_confirmation = serializers.CharField(
+        write_only=True
+    )
+
+    def validate_old_password(self, value):
+        user = self.context["request"].user
+
+        if not user.check_password(value):
+            raise serializers.ValidationError(
+                "Old password is incorrect."
+            )
+
+        return value
+
+    def validate(self, attrs):
+        user = self.context["request"].user
+
+        old_password = attrs["old_password"]
+        new_password = attrs["new_password"]
+        confirmation = attrs["new_password_confirmation"]
+
+        # Check confirmation
+        if new_password != confirmation:
+            raise serializers.ValidationError(
+                {
+                    "new_password_confirmation":
+                    "New passwords do not match."
+                }
+            )
+
+        # New password must be different
+        if user.check_password(new_password):
+            raise serializers.ValidationError(
+                {
+                    "new_password":
+                    "New password cannot be the same as the old password."
+                }
+            )
+
+        return attrs
+    
 class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField()
 

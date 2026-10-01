@@ -11,14 +11,19 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
-
+from rest_framework.generics import (
+    RetrieveUpdateAPIView,
+    ListAPIView,
+)
 from .serializers import (
     LoginSerializer,
     RegistrationSerializer,
     UserSerializer,
     LogoutSerializer,
     StaffCreateSerializer,
-    StaffStatusSerializer
+    StaffStatusSerializer,
+    ProfileSerializer,
+    ChangePasswordSerializer,
 )
 User = get_user_model()
 class CustomTokenRefreshView(TokenRefreshView):
@@ -287,4 +292,134 @@ class StaffStatusAPIView(APIView):
                 "user": UserSerializer(user).data,
             },
             status=status.HTTP_200_OK,
+        )
+
+class ProfileAPIView(RetrieveUpdateAPIView):
+    serializer_class = ProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    @extend_schema(
+        tags=["User Management"],
+        summary="View or update profile",
+        description=(
+            "Allows the authenticated user to view "
+            "or update their own profile."
+        ),
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(
+            request,
+            *args,
+            **kwargs
+        )
+
+    @extend_schema(
+        tags=["User Management"],
+        summary="Update profile",
+        description=(
+            "Allows the authenticated user to update "
+            "their email or phone number."
+        ),
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(
+            request,
+            *args,
+            **kwargs
+        )
+
+    @extend_schema(
+        tags=["User Management"],
+        summary="Replace profile information",
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(
+            request,
+            *args,
+            **kwargs
+        )
+
+
+class ChangePasswordAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=ChangePasswordSerializer,
+        responses={200: dict},
+        tags=["User Management"],
+        summary="Change password",
+        description=(
+            "Allows an authenticated user to change "
+            "their password after confirming the old password."
+        ),
+    )
+    def post(self, request):
+        serializer = ChangePasswordSerializer(
+            data=request.data,
+            context={
+                "request": request
+            },
+        )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        user = request.user
+
+        user.set_password(
+            serializer.validated_data[
+                "new_password"
+            ]
+        )
+
+        user.save()
+
+        return Response(
+            {
+                "message":
+                "Password changed successfully."
+            },
+            status=status.HTTP_200_OK,
+        )
+
+class UserListAPIView(ListAPIView):
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.role == User.Role.ADMIN:
+            return User.objects.all().order_by("id")
+
+        if user.role == User.Role.MANAGER:
+            return User.objects.exclude(
+                role=User.Role.ADMIN
+            ).order_by("id")
+
+        return User.objects.none()
+
+    def list(self, request, *args, **kwargs):
+
+        if request.user.role not in [
+            User.Role.ADMIN,
+            User.Role.MANAGER,
+        ]:
+            return Response(
+                {
+                    "error":
+                    "You do not have permission "
+                    "to view the user list."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return super().list(
+            request,
+            *args,
+            **kwargs
         )
