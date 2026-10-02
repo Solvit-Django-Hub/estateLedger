@@ -3,6 +3,7 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework import generics
+from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 from .models import Estate, Unit, UnitClaim, EstateMembership
 from .serializers import (
@@ -70,11 +71,12 @@ class UnitClaimListCreateView(generics.ListCreateAPIView):
     serializer_class = UnitClaimSerializer
 @extend_schema(
     tags=["Unit Claims"],
-    summary="Retrieve, update or delete a unit claim",
+    summary="Retrieve or delete a unit claim",
 )
-class UnitClaimDetailView(generics.RetrieveUpdateDestroyAPIView):
+class UnitClaimDetailView(generics.RetrieveDestroyAPIView):
     queryset = UnitClaim.objects.all().order_by("id")
     serializer_class = UnitClaimSerializer
+    permission_classes = [IsAuthenticated]
 @extend_schema(
     tags=["Unit Claims"],
     summary="Approve or reject a unit claim",

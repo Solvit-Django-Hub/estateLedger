@@ -228,3 +228,309 @@ class AuthenticationTests(APITestCase):
             refresh_response.status_code,
             status.HTTP_401_UNAUTHORIZED
         )
+class UserManagementTests(APITestCase):
+
+    def setUp(self):
+        self.profile_url = reverse("profile")
+        self.change_password_url = reverse("change-password")
+        self.user_list_url = reverse("user-list")
+
+        self.admin = User.objects.create_user(
+            email="admin@example.com",
+            phone_number="0788000001",
+            role=User.Role.ADMIN,
+            password="AdminPass123!",
+            is_staff=True,
+        )
+
+        self.manager = User.objects.create_user(
+            email="manager@example.com",
+            phone_number="0788000002",
+            role=User.Role.MANAGER,
+            password="ManagerPass123!",
+            is_staff=True,
+        )
+
+        self.owner = User.objects.create_user(
+            email="owner@example.com",
+            phone_number="0788000003",
+            role=User.Role.OWNER,
+            password="OwnerPass123!",
+        )
+
+        self.tenant = User.objects.create_user(
+            email="tenant@example.com",
+            phone_number="0788000004",
+            role=User.Role.TENANT,
+            password="TenantPass123!",
+        )
+
+    def authenticate(self, user):
+        refresh = RefreshToken.for_user(user)
+        access = str(refresh.access_token)
+
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {access}"
+        )
+
+    def test_authenticated_user_can_view_own_profile(self):
+        self.authenticate(self.tenant)
+
+        response = self.client.get(
+            self.profile_url
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK
+        )
+
+        self.assertEqual(
+            response.data["email"],
+            self.tenant.email
+        )
+
+        self.assertEqual(
+            response.data["role"],
+            User.Role.TENANT
+        )
+
+    def test_user_can_update_own_profile(self):
+        self.authenticate(self.tenant)
+
+        response = self.client.patch(
+            self.profile_url,
+            {
+                "phone_number": "0788111111"
+            },
+            format="json"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK
+        )
+
+        self.tenant.refresh_from_db()
+
+        self.assertEqual(
+            self.tenant.phone_number,
+            "0788111111"
+        )
+
+    def test_user_cannot_change_own_role(self):
+        self.authenticate(self.tenant)
+
+        response = self.client.patch(
+            self.profile_url,
+            {
+                "role": User.Role.ADMIN
+            },
+            format="json"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK
+        )
+
+        self.tenant.refresh_from_db()
+
+        self.assertEqual(
+            self.tenant.role,
+            User.Role.TENANT
+        )
+
+    def test_wrong_old_password_is_rejected(self):
+        self.authenticate(self.tenant)
+
+        response = self.client.post(
+            self.change_password_url,
+            {
+                "old_password": "WrongPassword123!",
+                "new_password": "NewTenantPass123!",
+                "new_password_confirmation": "NewTenantPass123!",
+            },
+            format="json"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST
+        )
+
+        self.assertIn(
+            "old_password",
+            response.data
+        )
+
+    def test_new_password_cannot_be_same_as_old_password(self):
+        self.authenticate(self.tenant)
+
+        response = self.client.post(
+            self.change_password_url,
+            {
+                "old_password": "TenantPass123!",
+                "new_password": "TenantPass123!",
+                "new_password_confirmation": "TenantPass123!",
+            },
+            format="json"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST
+        )
+
+        self.assertIn(
+            "new_password",
+            response.data
+        )
+
+    def test_password_confirmation_must_match(self):
+        self.authenticate(self.tenant)
+
+        response = self.client.post(
+            self.change_password_url,
+            {
+                "old_password": "TenantPass123!",
+                "new_password": "NewTenantPass123!",
+                "new_password_confirmation": "DifferentPass123!",
+            },
+            format="json"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST
+        )
+
+        self.assertIn(
+            "new_password_confirmation",
+            response.data
+        )
+
+    def test_user_can_change_password_successfully(self):
+        self.authenticate(self.tenant)
+
+        response = self.client.post(
+            self.change_password_url,
+            {
+                "old_password": "TenantPass123!",
+                "new_password": "NewTenantPass123!",
+                "new_password_confirmation": "NewTenantPass123!",
+            },
+            format="json"
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK
+        )
+
+        self.tenant.refresh_from_db()
+
+        self.assertTrue(
+            self.tenant.check_password(
+                "NewTenantPass123!"
+            )
+        )
+
+        self.assertFalse(
+            self.tenant.check_password(
+                "TenantPass123!"
+            )
+        )
+
+    def test_admin_can_view_all_users(self):
+        self.authenticate(self.admin)
+
+        response = self.client.get(
+            self.user_list_url
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK
+        )
+
+        results = response.data.get(
+            "results",
+            response.data
+        )
+
+        emails = [
+            user["email"]
+            for user in results
+        ]
+
+        self.assertIn(
+            self.admin.email,
+            emails
+        )
+
+        self.assertIn(
+            self.manager.email,
+            emails
+        )
+
+        self.assertIn(
+            self.owner.email,
+            emails
+        )
+
+        self.assertIn(
+            self.tenant.email,
+            emails
+        )
+
+    def test_manager_cannot_view_admin_users(self):
+        self.authenticate(self.manager)
+
+        response = self.client.get(
+            self.user_list_url
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK
+        )
+
+        results = response.data.get(
+            "results",
+            response.data
+        )
+
+        roles = [
+            user["role"]
+            for user in results
+        ]
+
+        self.assertNotIn(
+            User.Role.ADMIN,
+            roles
+        )
+
+    def test_owner_cannot_view_user_list(self):
+        self.authenticate(self.owner)
+
+        response = self.client.get(
+            self.user_list_url
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN
+        )
+
+    def test_tenant_cannot_view_user_list(self):
+        self.authenticate(self.tenant)
+
+        response = self.client.get(
+            self.user_list_url
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_403_FORBIDDEN
+        )
